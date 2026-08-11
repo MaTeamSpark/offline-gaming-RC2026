@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Bat keepie-uppie · Station loop</title>
+<title>Bat Keepie Uppie · Station loop</title>
 <style>
   :root{
     --ma-red:#CC0000; --ma-red-deep:#990000; --ma-navy:#061633;
@@ -20,8 +20,8 @@
     display:flex; align-items:center; justify-content:center;
     overflow:hidden; cursor:pointer;
   }
-  .stage{width:min(100vw,1600px); height:min(100vh,900px);
-    padding:2.4% 3.2%; display:flex; flex-direction:column}
+  .stage{width:100vw; height:100vh; padding:2.2% 3%;
+    display:flex; flex-direction:column}
 
   header{display:flex; align-items:center; justify-content:space-between}
   header img{height:44px; width:auto; display:block}
@@ -31,13 +31,15 @@
     text-transform:none; color:var(--ma-text-regular); margin-top:2px}
 
   .titlebar{margin-top:20px; display:flex; align-items:flex-end; gap:16px; flex-wrap:wrap}
-  h1{font-size:33px; line-height:1.1; font-weight:700; color:var(--ma-navy)}
-  .titlebar .sub{font-size:15px; color:var(--ma-text-regular); padding-bottom:4px}
+  h1{font-size:44px; line-height:1.1; font-weight:700; color:var(--ma-navy)}
+  .titlebar .kicker{font-size:15px; font-weight:700; letter-spacing:2px; text-transform:uppercase;
+    color:var(--ma-red); padding-bottom:6px; white-space:nowrap}
+  .titlebar .sub{font-size:19px; color:var(--ma-text-regular); padding-bottom:4px}
   .hair{height:2px; background:var(--ma-red); margin-top:12px; position:relative}
   .hair::after{content:""; position:absolute; left:0; top:-3.5px; width:9px; height:9px;
     border-radius:50%; background:var(--ma-navy)}
 
-  main{flex:1; display:grid; grid-template-columns:1.32fr 1fr;
+  main{flex:1 1 auto; min-height:0; display:grid; grid-template-columns:1.32fr 1fr;
     gap:3%; align-items:stretch; min-height:0; padding-top:12px}
 
   /* ---------------- animation panel ---------------- */
@@ -48,17 +50,17 @@
     display:flex; align-items:center; gap:9px;
     background:var(--ma-navy); color:var(--ma-white);
     padding:7px 13px; border-radius:3px}
-  .modebadge .mx{font-size:17px; font-weight:700; letter-spacing:-.01em}
-  .modebadge .mn{font-size:12px; font-weight:700; letter-spacing:1.3px; text-transform:uppercase}
-  .modehint{position:absolute; left:14px; top:50px; z-index:4;
-    font-size:12.5px; color:var(--ma-text-regular)}
+  .modebadge .mx{font-size:21px; font-weight:700; letter-spacing:-.01em}
+  .modebadge .mn{font-size:14.5px; font-weight:700; letter-spacing:1.3px; text-transform:uppercase}
+  .modehint{position:absolute; left:14px; top:56px; z-index:4;
+    font-size:15px; color:var(--ma-text-regular)}
 
   /* floor tape square, drawn in perspective */
   .floor{position:absolute; left:50%; bottom:34px; width:230px; height:96px;
     margin-left:-115px; transform:perspective(340px) rotateX(66deg);
     border:3px dashed var(--ma-stroke); border-radius:2px}
   .floorlabel{position:absolute; left:0; right:0; bottom:8px; text-align:center;
-    font-size:11px; font-weight:700; letter-spacing:1.2px;
+    font-size:13px; font-weight:700; letter-spacing:1.2px;
     text-transform:uppercase; color:var(--ma-text-regular)}
 
   .rig{position:absolute; inset:0; transform-origin:50% 88%;
@@ -66,10 +68,10 @@
 
   .ball{position:absolute; left:calc(50% - 54px); width:32px; height:32px; margin-left:-16px;
     bottom:150px; border-radius:50%; z-index:3;
-    background:radial-gradient(circle at 34% 30%, #e23a3a 0%, var(--ma-red) 46%, var(--ma-red-deep) 100%);
+    background:radial-gradient(circle at 34% 30%, #dcee72 0%, #c3d93c 46%, #93a828 100%);
     box-shadow:inset -3px -4px 6px rgba(0,0,0,.25)}
   .ball::after{content:""; position:absolute; inset:0; border-radius:50%;
-    border-top:2px solid rgba(255,255,255,.85); border-bottom:2px solid rgba(255,255,255,.5);
+    border-top:2px solid rgba(255,255,255,.9); border-bottom:2px solid rgba(255,255,255,.6);
     transform:rotate(28deg)}
 
   .bat{position:absolute; bottom:82px; left:50%; margin-left:-116px;
@@ -107,71 +109,136 @@
   @keyframes drop{0%{bottom:150px; opacity:1} 76%{bottom:40px; opacity:1} 100%{bottom:36px; opacity:.25}}
 
   .demochip{position:absolute; right:14px; top:14px; z-index:5;
-    font-size:11px; font-weight:700; letter-spacing:1.1px; text-transform:uppercase;
+    font-size:13px; font-weight:700; letter-spacing:1.1px; text-transform:uppercase;
     color:var(--ma-text-regular); background:var(--ma-white);
     border:1px solid var(--ma-stroke); border-radius:3px; padding:6px 11px}
   .demochip.live{color:var(--ma-white); background:var(--ma-red); border-color:var(--ma-red)}
 
   .turncue{position:absolute; left:50%; bottom:34%; margin-left:52px; z-index:5;
     display:none; align-items:center; gap:7px}
-  .turncue svg{width:30px; height:30px; display:block}
-  .turncue span{font-size:11.5px; font-weight:700; letter-spacing:1.1px;
+  .turncue svg{width:36px; height:36px; display:block}
+  .turncue span{font-size:14px; font-weight:700; letter-spacing:1.1px;
     text-transform:uppercase; color:var(--ma-red); white-space:nowrap}
   .rig.play.m2 ~ .turncue{display:flex; animation:cue calc(var(--p) * 2) ease-in-out infinite}
   @keyframes cue{0%,12%{opacity:.25} 32%{opacity:1} 56%{opacity:.25} 76%{opacity:1} 100%{opacity:.25}}
+
+  .intro{position:absolute; inset:0; z-index:7; display:none; flex-direction:column;
+    align-items:center; justify-content:center; text-align:center; padding:0 10%;
+    background:var(--ma-gray-x-light)}
+  .intro.on{display:flex}
+  .intro b{font-size:46px; font-weight:700; color:var(--ma-navy); letter-spacing:-.02em}
+  .intro p{font-size:19px; line-height:1.55; color:var(--ma-text-dark);
+    margin-top:10px; max-width:30em}
+  .intro span{margin-top:18px; font-size:14px; font-weight:700; letter-spacing:1.4px;
+    text-transform:uppercase; color:var(--ma-red)}
 
   .flash{position:absolute; inset:0; z-index:6; display:flex; flex-direction:column;
     align-items:center; justify-content:center; gap:8px; text-align:center; padding:0 8%;
     background:rgba(249,249,249,.95); opacity:0; transition:opacity .25s; pointer-events:none}
   .flash.on{opacity:1}
-  .flash .big{font-size:60px; font-weight:700; color:var(--ma-red); letter-spacing:-.02em}
-  .flash .lbl{font-size:15px; font-weight:700; letter-spacing:1.4px;
+  .flash .big{font-size:78px; font-weight:700; color:var(--ma-red); letter-spacing:-.02em}
+  .flash .lbl{font-size:18px; font-weight:700; letter-spacing:1.4px;
     text-transform:uppercase; color:var(--ma-navy)}
-  .flash .note{font-size:13px; color:var(--ma-text-regular)}
+  .flash .note{font-size:16px; color:var(--ma-text-regular)}
 
   /* ---------------- readout ---------------- */
-  .readout{display:flex; flex-direction:column; gap:14px; min-height:0}
+  .readout{min-height:0; overflow:hidden}
+  .rfit{display:flex; flex-direction:column; gap:14px; transform-origin:0 0}
   .clock{display:flex; align-items:center; gap:18px}
-  .dial{position:relative; width:106px; height:106px; flex:0 0 auto}
-  .dial svg{transform:rotate(-90deg)}
+  .dial{position:relative; width:128px; height:128px; flex:0 0 auto}
+  .dial svg{position:absolute; inset:0; width:100%; height:100%;
+    transform:rotate(-90deg); display:block}
   .dial .num{position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
-    font-size:32px; font-weight:700; color:var(--ma-navy); letter-spacing:-.02em}
-  .clock .cap{font-size:12px; font-weight:700; letter-spacing:1.4px;
+    line-height:1;
+    font-size:40px; font-weight:700; color:var(--ma-navy); letter-spacing:-.02em}
+  .clock .cap{font-size:14px; font-weight:700; letter-spacing:1.4px;
     text-transform:uppercase; color:var(--ma-text-regular)}
-  .clock .phase{font-size:20px; font-weight:700; color:var(--ma-navy); margin-top:3px}
+  .clock .phase{font-size:25px; font-weight:700; color:var(--ma-navy); margin-top:3px}
 
   .scorebox{border:1px solid var(--ma-stroke); border-radius:4px; padding:12px 18px}
   .scorerow{display:flex; align-items:baseline; justify-content:space-between}
   .scorerow + .scorerow{margin-top:7px; padding-top:7px; border-top:1px solid var(--ma-gray-light)}
-  .scorerow .k{font-size:12px; font-weight:700; letter-spacing:1.2px;
+  .scorerow .k{font-size:14px; font-weight:700; letter-spacing:1.2px;
     text-transform:uppercase; color:var(--ma-text-regular)}
-  .scorerow .v{font-size:28px; font-weight:700; color:var(--ma-navy); letter-spacing:-.02em}
-  .scorerow.total .v{color:var(--ma-red); font-size:38px}
+  .scorerow .v{font-size:36px; font-weight:700; color:var(--ma-navy); letter-spacing:-.02em}
+  .scorerow.total .v{color:var(--ma-red); font-size:49px}
 
   .modes{border:1px solid var(--ma-stroke); border-radius:4px; overflow:hidden}
-  .modes h2{font-size:11px; font-weight:700; letter-spacing:1.4px; text-transform:uppercase;
+  .modes h2{font-size:13px; font-weight:700; letter-spacing:1.4px; text-transform:uppercase;
     color:var(--ma-white); background:var(--ma-navy); padding:7px 14px}
   .mode{display:flex; align-items:center; gap:12px; padding:8px 14px;
     border-top:1px solid var(--ma-gray-light); color:var(--ma-text-regular)}
   .mode:first-of-type{border-top:0}
-  .mode .x{font-weight:700; font-size:17px; color:var(--ma-stroke); width:30px; flex:0 0 auto}
-  .mode .nm{font-size:14px}
-  .mode .nm em{display:block; font-style:normal; font-size:11.5px; color:var(--ma-stroke)}
+  .mode .x{font-weight:700; font-size:21px; color:var(--ma-stroke); width:30px; flex:0 0 auto}
+  .mode .nm{font-size:17px}
+  .mode .nm em{display:block; font-style:normal; font-size:13.5px; color:var(--ma-stroke)}
   .mode.live{background:#fff5f5; color:var(--ma-text-dark)}
   .mode.live .x{color:var(--ma-red)}
   .mode.live .nm{font-weight:700; color:var(--ma-navy)}
   .mode.live .nm em{font-weight:400; color:var(--ma-text-regular)}
 
+  .howto{margin-top:14px; border-top:2px solid var(--ma-red); padding-top:10px}
+  .howto h2{font-size:13px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase;
+    color:var(--ma-text-regular); margin-bottom:8px}
+  .howto ol{list-style:none; display:grid; grid-template-columns:repeat(4,1fr); gap:16px;
+    counter-reset:step}
+  .howto li{counter-increment:step; position:relative; padding-left:31px; min-width:0}
+  .howto li::before{content:counter(step); position:absolute; left:0; top:-1px;
+    width:23px; height:23px; border-radius:50%; background:var(--ma-navy); color:#fff;
+    font-size:13px; font-weight:700; display:flex; align-items:center; justify-content:center}
+  .howto li b{display:block; font-size:17.5px; color:var(--ma-navy); line-height:1.25}
+  .howto li span{display:block; font-size:14.5px; color:var(--ma-text-regular);
+    line-height:1.4; margin-top:3px}
+
   footer{margin-top:12px; border-top:1px solid var(--ma-stroke); padding-top:9px;
     display:flex; justify-content:space-between; align-items:center; gap:20px}
-  footer .rules{font-size:12.5px; color:var(--ma-text-regular); line-height:1.45}
+  footer .rules{font-size:15px; color:var(--ma-text-regular); line-height:1.45}
   footer .rules b{color:var(--ma-navy)}
-  footer .tap{font-size:11px; letter-spacing:1.2px; text-transform:uppercase;
+  footer .tap{font-size:12.5px; letter-spacing:1.2px; text-transform:uppercase;
     color:var(--ma-stroke); font-weight:700; white-space:nowrap}
 
+  @media (min-width:1700px){
+    h1{font-size:56px}
+    .titlebar .kicker{font-size:18px}
+    .titlebar .sub{font-size:23px}
+    .modebadge .mx{font-size:25px} .modebadge .mn{font-size:17px}
+    .modehint{font-size:18px} .floorlabel{font-size:15px}
+    .demochip{font-size:15px}
+    .intro b{font-size:58px} .intro p{font-size:23px} .intro span{font-size:16px}
+    .flash .big{font-size:96px} .flash .lbl{font-size:21px} .flash .note{font-size:18px}
+    .clock .cap{font-size:16px} .clock .phase{font-size:30px}
+    .scorerow .k{font-size:16px}
+    .modes h2{font-size:15px} .mode .nm{font-size:20px} .mode .nm em{font-size:15px}
+    .mode .x{font-size:24px}
+    .howto h2{font-size:15px} .howto li b{font-size:21px} .howto li span{font-size:17px}
+    .howto li{padding-left:37px}
+    .howto li::before{width:27px; height:27px; font-size:15px}
+    footer .rules{font-size:18px} footer .tap{font-size:14px}
+  }
+  @media (max-height:820px){
+    .stage{padding:1.6% 2.8%}
+    h1{font-size:38px}
+    .titlebar{margin-top:14px}
+    .howto{margin-top:10px; padding-top:8px}
+    footer{margin-top:9px; padding-top:7px}
+  }
+  @media (max-height:700px){
+    h1{font-size:32px}
+
+    .titlebar .sub{font-size:16px}
+    .dial{width:94px; height:94px} .dial .num{font-size:29px}
+    .scorerow .v{font-size:26px} .scorerow.total .v{font-size:34px}
+    .mode .nm{font-size:15px} .mode .nm em{font-size:12px}
+    .howto li b{font-size:15.5px} .howto li span{font-size:13px}
+    footer .rules{font-size:13px}
+  }
+  @media (max-width:1100px){
+    .howto ol{grid-template-columns:repeat(2,1fr); gap:10px 16px}
+  }
   @media (max-width:900px){
     main{grid-template-columns:1fr; grid-template-rows:1.05fr auto}
     h1{font-size:25px} .court{min-height:250px}
+    .titlebar .kicker{display:none}
   }
 </style>
 </head>
@@ -184,8 +251,9 @@
   </header>
 
   <div class="titlebar">
-    <h1>Bat keepie-uppie</h1>
-    <div class="sub">One attempt · 30 seconds · both feet inside a 60 cm square</div>
+    <h1>Bat Keepie Uppie</h1>
+    <div class="kicker">Play &middot; Score &middot; Win</div>
+    <div class="sub">How many times can you tap a ball on a cricket bat in 30 seconds?</div>
   </div>
   <div class="hair"></div>
 
@@ -231,7 +299,7 @@
         </div>
       </div>
 
-      <div class="demochip" id="demochip">10&#8239;second demo &middot; the real attempt runs 30&#8239;seconds</div>
+      <div class="demochip" id="demochip">Demo 10&#8239;s &middot; real attempt 30&#8239;s</div>
 
       <div class="turncue" id="turncue" aria-hidden="true">
         <svg viewBox="0 0 44 44">
@@ -243,6 +311,13 @@
         <span>Turn it over</span>
       </div>
 
+      <div class="intro" id="intro">
+        <b>Bat Keepie Uppie</b>
+        <p>Tap a green tennis ball on a cricket bat and keep it off the floor. Choose how hard you
+        want to make it, then see how many you can land in 30 seconds.</p>
+        <span>Watch the three difficulty levels &rarr;</span>
+      </div>
+
       <div class="flash" id="flash">
         <div class="lbl" id="flashLbl">Attempt over</div>
         <div class="big" id="flashBig">54</div>
@@ -251,6 +326,7 @@
     </div>
 
     <div class="readout">
+     <div class="rfit" id="rfit">
       <div class="clock">
         <div class="dial">
           <svg width="106" height="106" viewBox="0 0 106 106">
@@ -282,8 +358,23 @@
         <div class="mode" data-m="2"><span class="x">&times;3</span>
           <span class="nm">Non&#8209;dominant hand<em>Swap hands, the bat wanders</em></span></div>
       </div>
+     </div>
     </div>
   </main>
+
+  <section class="howto">
+    <h2>How to play</h2>
+    <ol>
+      <li><b>Pick your risk</b><span>Front face, front and back, or your other hand. Harder means
+        every tap is worth more.</span></li>
+      <li><b>Stand in the square</b><span>Both feet inside the 60 cm tape. Step out and the
+        attempt is over.</span></li>
+      <li><b>Keep it up for 30 seconds</b><span>Tap the ball on the bat face as many times as
+        you can without it hitting the floor.</span></li>
+      <li><b>Runs = taps &times; multiplier</b><span>One attempt each. Highest runs on the
+        board takes the prize.</span></li>
+    </ol>
+  </section>
 
   <footer>
     <div class="rules">
@@ -325,6 +416,7 @@ const modeEls = [...document.querySelectorAll('.mode')];
 
 let modeIdx = 0, timers = [], bounceTimer = null, rafId = null;
 let live = false;               // false = looping demo, true = a real attempt
+const intro = document.getElementById('intro');
 const span = () => live ? GAME : DEMO;
 const wait = (fn, ms) => timers.push(setTimeout(fn, ms));
 
@@ -339,8 +431,8 @@ function reset(){
   const chip = document.getElementById('demochip');
   chip.classList.toggle('live', live);
   chip.textContent = live
-    ? 'Live attempt \u00b7 30 seconds'
-    : '10\u200asecond demo \u00b7 the real attempt runs 30\u200aseconds';
+    ? 'Live attempt \u00b7 30\u2009s'
+    : 'Demo 10\u2009s \u00b7 real attempt 30\u2009s';
   document.getElementById('cap').textContent = live
     ? 'Your attempt \u00b7 30 seconds'
     : 'Demo \u00b7 10 seconds';
@@ -358,8 +450,17 @@ function dress(i){
   badgeH.textContent = m.hint;
 }
 
+function showIntro(){
+  reset();
+  dress(0);
+  intro.classList.add('on');
+  elPhase.textContent = 'Watch';
+  wait(() => { intro.classList.remove('on'); modeIdx = 0; round(); }, 7000);
+}
+
 function round(){
   reset();
+  intro.classList.remove('on');
   dress(modeIdx);
   elPhase.textContent = live ? 'Bat up' : 'Get ready';
   wait(() => { elPhase.textContent = 'Go'; play(MODES[modeIdx]); }, live ? 3200 : 2200);
@@ -400,23 +501,38 @@ function finish(taps, mode){
     flash.classList.add('on');
   }, 560);
   wait(() => {
-    if (live) { live = false; modeIdx = 0; }
-    else { modeIdx = (modeIdx + 1) % MODES.length; }
-    round();
+    if (live) { live = false; modeIdx = 0; round(); }
+    else if (modeIdx === MODES.length - 1) { showIntro(); }   // full cycle done, re-explain
+    else { modeIdx++; round(); }
   }, live ? 6000 : 3600);
 }
 
 function fit(){
   const c = document.querySelector('.court');
-  const s = Math.max(0.34, Math.min(1.15, c.clientHeight / 560));
+  const s = Math.max(0.34, Math.min(1.45, c.clientHeight / 520));
   rig.style.setProperty('--s', s.toFixed(3));
+
+  // Keep the whole readout column visible at any window size by scaling it as one
+  // block, so the type stays as large as the space allows instead of being clipped.
+  const col = document.querySelector('.readout');
+  const inner = document.getElementById('rfit');
+  inner.style.transform = 'none';
+  inner.style.width = '100%';
+  const avail = col.clientHeight, need = inner.scrollHeight;
+  if (need > 0 && avail > 0){
+    const k = Math.min(1, avail / need);
+    inner.style.transform = 'scale(' + k.toFixed(4) + ')';
+    inner.style.width = (100 / k).toFixed(3) + '%';
+  }
 }
 window.addEventListener('resize', fit);
 fit();
+setTimeout(fit, 60);
+setTimeout(fit, 400);
 
 function startLive(i){ live = true; modeIdx = i; round(); }
 
-document.body.addEventListener('click', () => { live = false; modeIdx = 0; round(); });
+document.body.addEventListener('click', () => { live = false; showIntro(); });
 document.addEventListener('keydown', e => {
   if (e.key === '1') startLive(0);
   else if (e.key === '2') startLive(1);
@@ -425,7 +541,7 @@ document.addEventListener('keydown', e => {
   else if (e.key === 'Escape') { live = false; modeIdx = 0; round(); }
 });
 
-round();
+showIntro();
 </script>
 </body>
 </html>
