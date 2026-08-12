@@ -45,14 +45,16 @@
   video{transform:translateZ(0)}
 
   .hud{position:absolute; inset:0; pointer-events:none}
-  .badge{position:absolute; left:10px; top:10px; display:flex; align-items:center; gap:7px;
+  .badge{position:absolute; left:10px; top:14px; display:flex; align-items:center; gap:7px;
     background:rgba(6,22,51,.88); color:#fff; padding:6px 11px; border-radius:3px}
   .badge b{font-size:15px} .badge span{font-size:10px; font-weight:700;
     letter-spacing:1.1px; text-transform:uppercase}
 
-  .clock{position:absolute; right:10px; top:10px; width:62px; height:62px}
-  .clock svg{position:absolute; inset:0; transform:rotate(-90deg)}
+  .clock{position:absolute; right:10px; top:14px; width:62px; height:62px}
+  .clock svg{position:absolute; inset:0; width:100%; height:100%;
+    transform:rotate(-90deg); display:block}
   .clock .t{position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    line-height:1;
     font-size:20px; font-weight:700; color:#fff; text-shadow:0 1px 3px rgba(0,0,0,.6)}
 
   .tapcount{position:absolute; left:0; right:0; bottom:14px; text-align:center; color:#fff}
@@ -166,8 +168,13 @@
   .stepper button{width:52px; height:52px; border-radius:50%; border:1px solid var(--ma-stroke);
     background:var(--ma-white); font-size:26px; font-weight:700; color:var(--ma-navy);
     font-family:inherit; cursor:pointer; line-height:1}
-  .stepper .n{font-size:58px; font-weight:700; color:var(--ma-red);
-    letter-spacing:-.03em; min-width:110px; text-align:center}
+  .stepper .n{font-size:58px; font-weight:700; color:var(--ma-red); font-family:inherit;
+    letter-spacing:-.03em; width:132px; text-align:center; padding:2px 0 6px;
+    border:0; border-bottom:2px solid var(--ma-stroke); background:transparent;
+    -webkit-appearance:none; appearance:none; border-radius:0}
+  .stepper .n:focus{outline:none; border-bottom-color:var(--ma-red); background:#fff5f5}
+  .typehint{text-align:center; font-size:11px; font-weight:700; letter-spacing:1.1px;
+    text-transform:uppercase; color:var(--ma-stroke); margin-top:2px}
   .card .runs{text-align:center; font-size:13px; color:var(--ma-text-regular)}
   .card .runs b{color:var(--ma-navy); font-size:19px}
   .card .why{margin-top:10px; font-size:11.5px; color:var(--ma-text-regular); line-height:1.5}
@@ -182,6 +189,8 @@
     .stagewrap{flex:1 1 60%}
     .panel{flex:0 0 380px; max-height:none; border-top:0; border-left:1px solid var(--ma-stroke)}
     header{position:absolute; z-index:10; left:0; right:380px; background:rgba(255,255,255,.94)}
+    /* the header sits over the camera view here, so keep the HUD clear of it */
+    .badge{top:66px} .clock{top:62px} .lockhint{top:56%}
     .sheet{align-items:center; justify-content:center}
     .card{max-width:440px; border-radius:8px}
   }
@@ -299,9 +308,11 @@
     <div class="mode" id="cMode">&times;1 front face</div>
     <div class="stepper">
       <button id="minus" aria-label="one fewer">&minus;</button>
-      <div class="n" id="cN">0</div>
+      <input class="n" id="cN" type="text" inputmode="numeric" pattern="[0-9]*"
+             maxlength="4" aria-label="taps counted" value="0">
       <button id="plus" aria-label="one more">+</button>
     </div>
+    <div class="typehint">Tap the number to type it in</div>
     <div class="runs">Runs: <b id="cRuns">0</b></div>
     <div class="why">Check it against what you saw. Nudge the number if the scorer missed a tap
       or double counted, then accept. Corrections are what make it better next time.</div>
@@ -1354,11 +1365,23 @@ function openSheet(n){
   paintSheet();
   sheet.classList.add('on');
 }
-function paintSheet(){
-  document.getElementById('cN').textContent = sheetN;
+const inN = document.getElementById('cN');
+
+function paintSheet(fromInput){
+  if (!fromInput) inN.value = sheetN;
   document.getElementById('cRuns').textContent = sheetN * MODES[modeIdx].mult;
 }
-document.getElementById('plus').onclick  = () => { sheetN++; paintSheet(); };
+
+/* Typed entry: keep digits only, clamp to something sane, and update runs live. */
+inN.addEventListener('input', () => {
+  const cleaned = inN.value.replace(/[^0-9]/g, '').slice(0, 4);
+  if (cleaned !== inN.value) inN.value = cleaned;
+  sheetN = cleaned === '' ? 0 : Math.min(9999, parseInt(cleaned, 10));
+  paintSheet(true);
+});
+inN.addEventListener('focus', () => inN.select());
+inN.addEventListener('blur', () => { inN.value = sheetN; });
+document.getElementById('plus').onclick  = () => { sheetN = Math.min(9999, sheetN + 1); paintSheet(); };
 document.getElementById('minus').onclick = () => { sheetN = Math.max(0, sheetN-1); paintSheet(); };
 document.getElementById('redo').onclick  = () => sheet.classList.remove('on');
 document.getElementById('accept').onclick = () => {
@@ -1373,8 +1396,13 @@ document.getElementById('accept').onclick = () => {
   if (document.getElementById('autoSave').checked) saveWorkbook(true);
   sheet.classList.remove('on');
   taps = 0; render();
-  inName.value = ''; selId.value = ''; inCodeOth.value = '';
-  syncOtherBoxes(); refreshGo();      // next player; the team stays as a running filter
+  // a stored score means a fresh player: clear name, code and team together
+  inName.value = '';
+  selId.value = '';
+  selTeam.value = '';
+  inCodeOth.value = '';
+  inTeamOth.value = '';
+  fillNames(); fillCodes(); syncOtherBoxes(); refreshGo();
 };
 
 function paintResults(){
