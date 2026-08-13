@@ -139,6 +139,16 @@
   .savex{margin-top:9px; width:100%; padding:12px; border:0; border-radius:4px;
     background:var(--ma-navy); color:#fff; font-family:inherit; font-size:13px;
     font-weight:700; letter-spacing:.8px; text-transform:uppercase; cursor:pointer}
+  .saving{margin-top:12px; border-top:1px solid var(--ma-gray-light); padding-top:10px}
+  .saving h3{font-size:10px; font-weight:700; letter-spacing:1.2px; text-transform:uppercase;
+    color:var(--ma-text-regular); margin-bottom:7px}
+  .savex.alt{background:var(--ma-white); color:var(--ma-navy);
+    border:1px solid var(--ma-stroke)}
+  .dirnote{margin-top:7px; font-size:11.5px; line-height:1.45; color:var(--ma-text-regular)}
+  .dirnote b{color:var(--ma-navy)}
+  .dirnote.ok{color:#1b6b2c} .dirnote.ok b{color:#1b6b2c}
+  .dirnote.no{color:var(--ma-red)} .dirnote.no b{color:var(--ma-red)}
+
   .autorow{display:flex; align-items:center; gap:8px; margin-top:9px;
     font-size:11.5px; color:var(--ma-text-regular)}
   .autorow input{width:17px; height:17px; accent-color:var(--ma-red)}
@@ -223,9 +233,9 @@
   </div>
 
   <div class="lockhint" id="lockhint">
-    <b>Set up for a green ball</b>
-    It is already looking for a green ball. For best results hold yours still in the middle
-    of the frame and tap it once, so it learns your exact shade and lighting.
+    <b>Set up for a neon ball</b>
+    It is already looking for neon yellow through green. If it does not pick your ball up,
+    hold it still in the middle of the frame and tap it once to lock the exact shade.
   </div>
 
   <div class="fail" id="fail" style="display:none">
@@ -265,9 +275,13 @@
   <button class="go" id="go" disabled>Lock the ball colour first</button>
 
   <div class="tunerow">
-    <label for="tol">Colour</label>
-    <input type="range" id="tol" min="6" max="60" value="20">
-    <output id="tolO">20</output>
+    <label for="tol">Hue range</label>
+    <input type="range" id="tol" min="8" max="45" value="24">
+    <output id="tolO">24&deg;</output>
+  </div>
+  <div class="autorow" style="margin-top:8px">
+    <input type="checkbox" id="showMask">
+    <label for="showMask">Show what it sees</label>
   </div>
   <div class="tunerow">
     <label for="amp">Bounce</label>
@@ -277,13 +291,15 @@
 
   <div class="status">
     <span class="pill" id="pTrack">no ball</span>
-    <span class="pill" id="pLock">green preset</span>
+    <span class="pill" id="pLock">neon preset 63&deg;</span>
     <span class="pill" id="pWho" style="display:none">guest</span>
     <span class="pill" id="pFps">– fps</span>
     <div style="margin-top:7px">
-      Counts a tap each time the ball bottoms out and rises again. Raise <b>Colour</b> if the
-      ring loses the ball, lower it if it latches onto something else. Raise <b>Bounce</b> if
-      small wobbles are being counted.
+      Tuned for neon yellow-green balls, and only round ball-sized objects are tracked,
+      so bat and hand movement is ignored. Tap the ball on screen to lock its exact hue.
+      Widen <b>Hue range</b> if the ring loses the ball, narrow it if it latches onto the
+      floor or a shirt. Raise <b>Bounce</b> if small wobbles are counted. Tick
+      <b>Show what it sees</b> to check the colour match live.
     </div>
   </div>
 
@@ -293,12 +309,19 @@
       <thead><tr><th>Player</th><th>Mode</th><th style="text-align:right">Runs</th></tr></thead>
       <tbody id="resBody"></tbody>
     </table>
-    <button class="savex" id="saveXl">Save to Excel</button>
+    <button class="copy" id="copyBtn">Copy as TSV</button>
+  </div>
+
+  <div class="saving">
+    <h3>Where scores are saved</h3>
+    <button class="savex" id="pickDir">Choose the save folder</button>
+    <div class="dirnote" id="dirNote">Pick the Results Challenge folder once and every score
+      writes straight into it, with no download prompts.</div>
     <div class="autorow">
       <input type="checkbox" id="autoSave" checked>
-      <label for="autoSave">Save the workbook after every attempt</label>
+      <label for="autoSave">Save after every attempt</label>
     </div>
-    <button class="copy" id="copyBtn">Copy as TSV</button>
+    <button class="savex alt" id="saveXl">Save a copy now</button>
   </div>
 </div>
 
@@ -743,7 +766,10 @@ const MODES = [
   {mult:3, label:'\u00d73', name:'Other hand'}
 ];
 const ROUND   = 30;      // seconds, the real attempt
-const BALL_PRESET = [196, 216, 66];   // tennis ball green: the scorer starts looking for this
+/* Measured off a Boldfit cricket tennis ball: hue 50-68 degrees, median 63.
+   The window below covers neon yellow through to green so any of the usual balls work. */
+const HUE_DEFAULT = 63;
+const SAT_MIN = 0.28;
 const PW = 240, PH = 180; // processing resolution
 const CELL = 15;          // coarse grid cell, px, for cluster picking
 const REFRACT = 130;      // ms, minimum gap between counted taps
@@ -867,9 +893,11 @@ proc.width = PW; proc.height = PH;
 const pctx  = proc.getContext('2d', {willReadFrequently:true});
 
 let modeIdx = 0;
-let target = null;                 // ball chromaticity {nr, ng, sat}
+let hueCentre = HUE_DEFAULT;       // middle of the accepted hue window
+let maskOn = false, lastData = null;
+let target = null;                 // kept for the lock readout
 let locked = false;                // true once tapped on the real ball
-let tol = 20, ampPct = 7;
+let tol = 24, ampPct = 7;
 let running = false, taps = 0, t0 = 0, rafId = null;
 let phase = 'down', pivot = null, pivotT = 0, prevTop = null, lastTapT = 0;
 let hist = [];                     // recent {t, y} for the trace
@@ -917,15 +945,29 @@ function showFail(t, b){
 function chroma(r,g,b){
   const s = r + g + b || 1;
   const mx = Math.max(r,g,b), mn = Math.min(r,g,b);
-  return {nr: r/s, ng: g/s, lum: s, sat: mx ? (mx - mn) / mx : 0};
+  return {nr: r/s, ng: g/s, lum: s, sat: mx ? (mx - mn) / mx : 0,
+          hue: hueOf(r,g,b,mx,mn)};
+}
+
+/* Hue in degrees. Neon yellow sits near 55, a green tennis ball near 75, and the
+   Boldfit ball measures about 63, so a window rather than a single colour is what
+   actually holds up across lighting. */
+function hueOf(r,g,b,mx,mn){
+  const d = mx - mn;
+  if (d === 0) return -1;
+  let hu;
+  if (mx === r)      hu = ((g - b) / d) % 6;
+  else if (mx === g) hu = (b - r) / d + 2;
+  else               hu = (r - g) / d + 4;
+  hu *= 60;
+  return hu < 0 ? hu + 360 : hu;
 }
 
 /* Densest matching cluster, so a lanyard across the room loses to the ball. */
 function findBall(data, now){
   if (!target) return null;
-  const rad = tol / 400;            // 8..60 on the slider -> 0.02..0.15
-  const t2 = rad * rad;
-  const satFloor = target.sat * 0.45;
+  const half = tol;                 // the slider is now the hue window, in degrees
+  const hLo = hueCentre - half, hHi = hueCentre + half;
   const gx = Math.ceil(PW / CELL), gy = Math.ceil(PH / CELL);
   const grid = new Int16Array(gx * gy);
   const motion = new Int16Array(gx * gy);
@@ -942,11 +984,12 @@ function findBall(data, now){
       const lv = (r + g + b) / 3 | 0;
       gray[gi] = lv;
       const moved = prevGray && Math.abs(lv - prevGray[gi]) > 18;
-      if (r + g + b < 105) continue;                 // too dark to judge colour
-      const c = chroma(r,g,b);
-      if (c.sat < satFloor) continue;                // washed out: floor, wall, skin
-      const dr = c.nr - target.nr, dg = c.ng - target.ng;
-      if (dr*dr + dg*dg > t2) continue;
+      const mx = r > g ? (r > b ? r : b) : (g > b ? g : b);
+      const mn = r < g ? (r < b ? r : b) : (g < b ? g : b);
+      if (mx < 58) continue;                         // too dark to judge colour
+      if ((mx - mn) / mx < SAT_MIN) continue;        // washed out: floor, wall, skin
+      const hu = hueOf(r,g,b,mx,mn);
+      if (hu < hLo || hu > hHi) continue;            // not in the neon yellow-green band
       const ci = (y / CELL | 0) * gx + (x / CELL | 0);
       grid[ci]++;
       if (moved) motion[ci]++;
@@ -1061,10 +1104,32 @@ function render(){
     running ? taps + ' taps  \u00b7  ' + (taps * m.mult) + ' runs' : 'taps detected';
 }
 
+/* Paint every pixel the colour test accepts. The fastest way to tell whether a
+   miss is a colour problem or a shape problem. */
+function drawMask(data, w, h, s, ox, oy){
+  const half = tol, hLo = hueCentre - half, hHi = hueCentre + half;
+  vctx.fillStyle = 'rgba(204,0,0,.55)';
+  const box = Math.max(2, Math.round(2 * s));
+  for (let y = 0; y < PH; y += 2){
+    for (let x = 0; x < PW; x += 2){
+      const i = (y * PW + x) * 4;
+      const r = data[i], g = data[i+1], b = data[i+2];
+      const mx = r > g ? (r > b ? r : b) : (g > b ? g : b);
+      const mn = r < g ? (r < b ? r : b) : (g < b ? g : b);
+      if (mx < 58 || (mx - mn) / mx < SAT_MIN) continue;
+      const hu = hueOf(r,g,b,mx,mn);
+      if (hu < hLo || hu > hHi) continue;
+      vctx.fillRect(x*s + ox, y*s + oy, box, box);
+    }
+  }
+}
+
 function drawOverlay(ball){
   const w = view.clientWidth, h = view.clientHeight;
   if (view.width !== w || view.height !== h){ view.width = w; view.height = h; }
   vctx.clearRect(0,0,w,h);
+  const sM = Math.max(w / PW, h / PH);
+  if (maskOn && lastData) drawMask(lastData, w, h, sM, (w - PW*sM)/2, (h - PH*sM)/2);
   if (!ball) return;
   // processing canvas is object-fit:cover of the same frame, so scale by the larger ratio
   const s = Math.max(w / PW, h / PH);
@@ -1104,7 +1169,8 @@ function loop(){
 
   let ball = null;
   if (target){
-    ball = findBall(pctx.getImageData(0,0,PW,PH).data, now);
+    lastData = pctx.getImageData(0,0,PW,PH).data;
+    ball = findBall(lastData, now);
     const pt = document.getElementById('pTrack');
     if (ball){ lastSeen = now; lastPos = ball; pt.textContent = 'tracking ball'; pt.className = 'pill ok'; }
     else if (now - lastSeen > 400){
@@ -1148,39 +1214,37 @@ document.getElementById('stage').addEventListener('click', e => {
   const w0 = Math.min(PW - x0, R*2+1), h0 = Math.min(PH - y0, R*2+1);
   const d = pctx.getImageData(x0, y0, w0, h0).data;
 
-  let bestSat = 0, br = 0, bg = 0, bb = 0;
+  // collect the hues of every reasonably saturated pixel, then take the median:
+  // one stray highlight or shadow cannot drag the window off the ball
+  const hues = [];
   for (let i = 0; i < d.length; i += 4){
     const r = d[i], g = d[i+1], b = d[i+2];
     const mx = Math.max(r,g,b), mn = Math.min(r,g,b);
-    if (mx < 60) continue;
-    const sat = (mx - mn) / mx;
-    if (sat > bestSat){ bestSat = sat; br = r; bg = g; bb = b; }
+    if (mx < 58 || (mx - mn) / mx < 0.25) continue;
+    const hu = hueOf(r,g,b,mx,mn);
+    if (hu >= 0) hues.push(hu);
   }
 
   const hint = document.getElementById('lockhint');
-  if (bestSat < 0.28){                       // nothing but floor and shadow there
+  if (hues.length < 12){                     // nothing but floor and shadow there
     hint.style.display = 'block';
     hint.innerHTML = '<b>Could not see the ball</b>Hold it still, fill a bit more of the '
       + 'frame, and tap right on it.';
     return;
   }
 
-  // average the pixels close to that winner, for a stable centre
-  let sr=0, sg=0, sb=0, sx=0, sy=0, n=0;
-  for (let i = 0, k = 0; i < d.length; i += 4, k++){
-    const r = d[i], g = d[i+1], b = d[i+2];
-    if (Math.abs(r-br) < 46 && Math.abs(g-bg) < 46 && Math.abs(b-bb) < 46){
-      sr+=r; sg+=g; sb+=b; sx += x0 + (k % w0); sy += y0 + (k / w0 | 0); n++;
-    }
-  }
-  target = chroma(sr/n, sg/n, sb/n);
+  hues.sort((a,b) => a - b);
+  hueCentre = hues[hues.length >> 1];
+  target = {hue: hueCentre};
   locked = true;
-  document.getElementById('pLock').textContent = 'colour locked';
-  document.getElementById('pLock').className = 'pill ok';
-  lastPos = {x: sx/n, y: sy/n};              // start tracking from the ball itself
-  bandX = sx/n;                              // and only look in that vertical band
+  lastPos = {x: px, y: py};                  // start tracking from the ball itself
+  bandX = px;                                // and only look in that vertical band
   refD = null;                               // remeasure the ball's size
   lastSeen = performance.now();
+
+  const pl = document.getElementById('pLock');
+  pl.textContent = 'locked at ' + Math.round(hueCentre) + '\u00b0';
+  pl.className = 'pill ok';
   hint.style.display = 'none';
   refreshGo();
 });
@@ -1328,8 +1392,13 @@ document.getElementById('modes').addEventListener('click', e => {
 });
 
 const tolI = document.getElementById('tol'), ampI = document.getElementById('amp');
-tolI.addEventListener('input', () => { tol = +tolI.value; document.getElementById('tolO').textContent = tol; });
+tolI.addEventListener('input', () => { tol = +tolI.value;
+  document.getElementById('tolO').textContent = tol + '\u00b0'; });
 ampI.addEventListener('input', () => { ampPct = +ampI.value; document.getElementById('ampO').textContent = ampPct; });
+
+document.getElementById('showMask').addEventListener('change', e => {
+  maskOn = e.target.checked;
+});
 
 const goBtn = document.getElementById('go');
 goBtn.addEventListener('click', () => running ? stop() : start());
@@ -1434,24 +1503,99 @@ function sheetRows(){
   return rows;
 }
 
+/* ---------------------------------------------------------------------------
+   Writing straight to a folder.
+
+   A browser cannot be handed a path like C:\\Users\\... — that is a hard security
+   boundary, and no page can write to disk unprompted. What it can do, in Chrome and
+   Edge on desktop, is let you pick a folder once. After that this page holds a handle
+   to it and overwrites the workbook there silently, with no download prompt. Point it
+   at the synced Teams folder and OneDrive carries the file up to SharePoint.
+   --------------------------------------------------------------------------- */
+let dirHandle = null;
+const canPickDir = typeof window.showDirectoryPicker === 'function';
+const dirNote = document.getElementById('dirNote');
+const pickBtn = document.getElementById('pickDir');
+
+function noteDir(msg, cls){
+  dirNote.className = 'dirnote' + (cls ? ' ' + cls : '');
+  dirNote.innerHTML = msg;
+}
+
+if (!canPickDir){
+  pickBtn.style.display = 'none';
+  noteDir('This browser cannot write to a folder directly. Use <b>Chrome or Edge on a '
+        + 'laptop</b> for silent saving; here the workbook downloads instead.');
+}
+
+pickBtn.addEventListener('click', async () => {
+  try{
+    dirHandle = await window.showDirectoryPicker({id:'rc2026-scores', mode:'readwrite'});
+    const perm = await dirHandle.requestPermission({mode:'readwrite'});
+    if (perm !== 'granted'){
+      dirHandle = null;
+      return noteDir('Write permission was declined, so scores will download instead.', 'no');
+    }
+    pickBtn.textContent = 'Change the save folder';
+    noteDir('Saving into <b>' + dirHandle.name + '</b> after every attempt.', 'ok');
+    if (results.length) saveWorkbook(true);        // catch up anything already scored
+  }catch(err){
+    if (err && err.name === 'AbortError') return;  // they closed the picker
+    dirHandle = null;
+    noteDir('Could not open that folder: ' + (err && err.name ? err.name : 'unknown')
+          + '. Scores will download instead.', 'no');
+  }
+});
+
+function workbookName(){
+  return 'Bat-Keepie-Uppie-Scores-' + new Date().toISOString().slice(0,10) + '.xlsx';
+}
+
+async function writeToFolder(blob){
+  const fh = await dirHandle.getFileHandle(workbookName(), {create:true});
+  const w = await fh.createWritable();            // replaces the file each time
+  await w.write(blob);
+  await w.close();
+}
+
 let savedOnce = 0;
-function saveWorkbook(auto){
-  if (!results.length) return;
-  const blob = buildXlsx(sheetRows());
-  const stamp = new Date().toISOString().slice(0,10);
+function flash(msg){
+  const btn = document.getElementById('saveXl');
+  btn.textContent = msg;
+  clearTimeout(savedOnce);
+  savedOnce = setTimeout(() => btn.textContent = 'Save a copy now', 2600);
+}
+
+function download(blob){
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = 'keepie-uppie-scores-' + stamp + '.xlsx';
+  a.download = workbookName();
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 4000);
-  const btn = document.getElementById('saveXl');
-  btn.textContent = auto
-    ? 'Saved \u2014 ' + results.length + (results.length === 1 ? ' attempt' : ' attempts')
-    : 'Workbook saved';
-  clearTimeout(savedOnce);
-  savedOnce = setTimeout(() => btn.textContent = 'Save to Excel', 2500);
 }
-document.getElementById('saveXl').onclick = () => saveWorkbook(false);
+
+async function saveWorkbook(auto, forceDownload){
+  if (!results.length) return;
+  const blob = buildXlsx(sheetRows());
+  const n = results.length + (results.length === 1 ? ' attempt' : ' attempts');
+
+  if (dirHandle && !forceDownload){
+    try{
+      await writeToFolder(blob);
+      noteDir('Saved to <b>' + dirHandle.name + '</b> \u00b7 ' + n
+            + ' \u00b7 ' + new Date().toLocaleTimeString(), 'ok');
+      flash('Saved to folder');
+      return;
+    }catch(err){
+      // most often the file is briefly locked by a sync client, so fall back
+      noteDir('Folder write failed (' + (err && err.name ? err.name : 'error')
+            + '). Downloaded instead \u2014 try the folder again.', 'no');
+    }
+  }
+  download(blob);
+  flash(auto ? 'Downloaded \u2014 ' + n : 'Workbook downloaded');
+}
+document.getElementById('saveXl').onclick = () => saveWorkbook(false, true);
 
 document.getElementById('copyBtn').onclick = () => {
   const txt = sheetRows().slice(3).map(r => r.join('\t')).join('\n');
@@ -1461,7 +1605,7 @@ document.getElementById('copyBtn').onclick = () => {
 };
 
 refreshGo();
-target = chroma(BALL_PRESET[0], BALL_PRESET[1], BALL_PRESET[2]);
+target = {hue: HUE_DEFAULT};
 // clear the setup hint once it is reliably tracking, or on a tap
 const hintWatch = setInterval(() => {
   const hint = document.getElementById('lockhint');
